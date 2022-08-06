@@ -12,3 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0ba8a0411826aaa42b2edd954b6364fc, type: 3}
   m_Name: HousePlan
   m_EditorClassIdentifier: 
+  GridSize: {x: 15, y: 10}
+  PrivateAreaRatio: 1
+  PublicAreaRatio: 1
+  Rooms: []

@@ -9,8 +9,8 @@ namespace BuildingGeneration
     {
         public Vector2Int GridSize;
 
-        public float PrivateAreaRatio;
-        public float PublicAreaRatio;
+        public int PrivateAreaRatio;
+        public int PublicAreaRatio;
 
         public Room[] Rooms;
     }

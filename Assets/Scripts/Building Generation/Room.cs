@@ -6,6 +6,7 @@ namespace BuildingGeneration
 {
     public enum RoomType
     {
+        Empty,
         Bedroom,
         Bathroom
     }
