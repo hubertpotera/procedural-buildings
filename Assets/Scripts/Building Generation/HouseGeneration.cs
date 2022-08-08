@@ -6,6 +6,7 @@ namespace BuildingGeneration
 {
     public class HouseGeneration : MonoBehaviour
     {
+        public int Seed;
         public HousePlanSO HousePlan;
 
         private void Start() {
@@ -23,7 +24,7 @@ namespace BuildingGeneration
                 }
             }
 
-            Floor floor = new Floor(HousePlan, outside);
+            Floor floor = new Floor(Seed, HousePlan, outside);
             
             floor.ShowDebug();
         }

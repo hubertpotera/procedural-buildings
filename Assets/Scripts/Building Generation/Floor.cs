@@ -13,14 +13,15 @@ namespace BuildingGeneration
 
         private int[] _grid;
         private Vector2Int _gridSize;
-        private int floorArea;
+        private System.Random _prng;
 
 
 
-        public Floor(HousePlanSO plan, Vector2Int[] outsideCells)
+        public Floor(int seed, HousePlanSO plan, Vector2Int[] outsideCells)
         {
             _gridSize = plan.GridSize;
             _grid = new int[_gridSize.x * _gridSize.y];
+            _prng = new System.Random(seed);
 
             // Set outside cells to -1
             int outsideArea = 0;
@@ -29,40 +30,39 @@ namespace BuildingGeneration
                 _grid[PosToIdx(outsideCells[i])] = -1;
                 outsideArea ++;
             }
-            floorArea = _grid.Length - outsideArea;
 
             // Divide to private and public area
             Room privateArea = new Room(RoomType.Empty, plan.PrivateAreaRatio);
             Room publicArea = new Room(RoomType.Empty, plan.PublicAreaRatio);
-            FindSeeds(0, new Room[]{privateArea, publicArea});
+            Vector2Int[] areaSeeds = FindRoomSeeds(0, new Room[]{privateArea, publicArea});
         }
 
-        private Vector2Int[] FindSeeds(int validPlacement, Room[] rooms)
+        private Vector2Int[] FindRoomSeeds(int validPlacement, Room[] rooms)
         {
-            //calculate percentage area of each room
-            //based on that calculate minimum distance from walls (?how exactly?)
-            //set weights
-            //get final seeds
-            Vector2Int[] seeds = new Vector2Int[rooms.Length];
+            Vector2Int[] roomSeeds = new Vector2Int[rooms.Length];
 
             int availableArea = 0;
             for (int i = 0; i < _grid.Length; i++)
             {
                 if(_grid[i] == validPlacement) availableArea ++;
             }
-            int totalRatio = 0;
+            int totalAreaRatio = 0;
             for (int i = 0; i < rooms.Length; i++)
             {
-                totalRatio += rooms[i].AreaRatio;
+                totalAreaRatio += rooms[i].AreaRatio;
             }
 
             for (int roomIdx = 0; roomIdx < rooms.Length; roomIdx++)
             {
-                float areaPercentage = (float)rooms[roomIdx].AreaRatio / (float)totalRatio;
+                //TODO: adjecency 
+                float areaPercentage = (float)rooms[roomIdx].AreaRatio / (float)totalAreaRatio;
                 float areaToTake = areaPercentage * availableArea;
-                int wallDist = 1 + (int)(0.2f*Mathf.Sqrt(areaToTake));
-                float[] gridWeight = new float[_grid.Length];
+                int wallDist = (int)(0.2f*Mathf.Sqrt(areaToTake));
 
+                int[] gridWeight = new int[_grid.Length];
+                int totalWeights = 0;
+
+                // Fill grid with weights
                 for (int cellIdx = 0; cellIdx < gridWeight.Length; cellIdx++)
                 {
                     if(_grid[cellIdx] != validPlacement) continue;
@@ -86,20 +86,58 @@ namespace BuildingGeneration
                         }
                     }
                     if(!valid) continue;
+                    gridWeight[cellIdx] = 1;
+                    totalWeights += 1;
+                }
+                for (int i = 0; i < roomIdx; i++)
+                { 
+                    // Set weight of cells around previous seeds to 0
+                    for (int y = -1; y <= 1; y++)
+                    {
+                        for (int x = -1; x <= 1; x++)
+                        {
+                            Vector2Int offset = new Vector2Int(x,y);
+                            gridWeight[PosToIdx(roomSeeds[i] + offset)] = 0;
+                        }
+                    }
+                }
 
-                    gridWeight[cellIdx] = 1f;
-
-                    Vector2Int pos = IdxToPos(cellIdx);
-                    GameObject.CreatePrimitive(PrimitiveType.Cube).transform.position = new Vector3(pos.x, roomIdx, pos.y);
+                // Pick cell for room seed
+                int n = _prng.Next(0, totalWeights);
+                int gone = 0;
+                for (int i = 0; i < gridWeight.Length; i++)
+                {
+                    gone += gridWeight[i];
+                    if(n < gone)
+                    {
+                        roomSeeds[roomIdx] = IdxToPos(i);
+                        break;
+                    }
                 }
             }
 
-            return seeds;
+            return roomSeeds;
         }
 
-        private void ExpandRooms(Room[] rooms, int[] roomIndeces, Vector2Int[] seeds)
+        private void ExpandRooms(int validPlacement, Room[] rooms, Vector2Int[] roomSeeds)
         {
+            int availableArea = 0;
+            for (int i = 0; i < _grid.Length; i++)
+            {
+                if(_grid[i] == validPlacement) availableArea ++;
+            }
+            int totalAreaRatio = 0;
+            for (int i = 0; i < rooms.Length; i++)
+            {
+                totalAreaRatio += rooms[i].AreaRatio;
+            }
+            int[] maxAreas = new int[rooms.Length];
+            for (int i = 0; i < rooms.Length; i++)
+            {
+                maxAreas[i] = (int)(0.5f*availableArea * rooms[i].AreaRatio/totalAreaRatio);
+            }
 
+            //TODO contine algorithm, figure out how to pick out rooms
         }
 
         private void CheckValidity()
