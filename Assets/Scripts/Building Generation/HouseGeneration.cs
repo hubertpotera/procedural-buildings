@@ -23,8 +23,10 @@ namespace BuildingGeneration
                     outside[y*5 + x] = new Vector2Int(x,y);
                 }
             }
-
+            Debug.Log("Generation start");
+            float startTime = Time.realtimeSinceStartup;
             Floor floor = new Floor(Seed, HousePlan, outside);
+            Debug.Log("Generation ended. Took " + (Time.realtimeSinceStartup-startTime));
             
             floor.ShowDebug();
         }
