@@ -16,7 +16,7 @@ namespace BuildingGeneration
         private System.Random _prng;
         private RoomWInfo[] _rooms;
 
-        public Floor(int seed, HousePlanSO plan, Vector2Int[] outsideCells)
+        public Floor(int seed, BuildingPlanSO plan, Vector2Int[] outsideCells)
         {
             _gridSize = plan.GridSize;
             _grid = new int[_gridSize.x * _gridSize.y];
@@ -117,10 +117,6 @@ namespace BuildingGeneration
                     if(n < gone)
                     {
                         roomSeeds[roomIdx] = IdxToPos(i);
-                        // TEMP --------------------------
-                        GameObject.CreatePrimitive(PrimitiveType.Sphere).transform.position = 
-                            new Vector3(IdxToPos(i).x, 3f, IdxToPos(i).y);
-                        // -------------------------------
                         break;
                     }
                 }
@@ -156,24 +152,20 @@ namespace BuildingGeneration
             while (roomsToExpand.Count != 0)
             {
                 int idx = PickRoomWeighted(roomsToExpand);
-                //bool canGrow = GrowRect(validPlacement, roomsToExpand[idx]);
-                bool canGrow = GrowRoom(validPlacement, roomsToExpand[idx]);
+                List<List<int>> expansions = FindExpansions(validPlacement, roomsToExpand[idx]);
+                //TODO: FilterRectExpansions()
+                bool canGrow = GrowRect(roomsToExpand[idx], expansions);
                 if(!canGrow) 
                 {
                     roomsToExpand.RemoveAt(idx);
                 }
             }
-            // roomsToExpand.AddRange(rooms);
+            roomsToExpand.AddRange(rooms);
             // Grow with allowed L shapes
-            // while (roomsToExpand.Count != 0)
-            // {
-            //     int idx = PickRoomWeighted(roomsToExpand);
-            //     bool canGrow = GrowRect(validPlacement, roomsToExpand[idx]);
-            //     if(!canGrow) 
-            //     {
-            //         roomsToExpand.RemoveAt(idx);
-            //     }
-            // }
+            while (roomsToExpand.Count != 0)
+            {
+                break;
+            }
         }
 
         private int PickRoomWeighted(List<RoomWInfo> available)
@@ -196,122 +188,7 @@ namespace BuildingGeneration
             return available.Count-1;
         }
 
-        private bool GrowRect(int validPlacement, RoomWInfo room)
-        {
-            List<List<int>> candidateExpansions = new List<List<int>>();
-
-            for (int cellIdx = 0; cellIdx < _grid.Length; cellIdx++)
-            {
-                if(_grid[cellIdx] != room.Idx) continue;
-
-                Vector2Int cellPos = IdxToPos(cellIdx);
-                if(cellPos.y == 0 || _grid[PosToIdx(cellPos+Vector2Int.down)] != room.Idx)
-                {
-                    // Wall continues up
-                    if(cellPos.x > 0 && _grid[PosToIdx(cellPos+Vector2Int.left)] == validPlacement)
-                    {
-                        // Outside is on the left
-                        List<int> expansion = CalculateRectExpansion(validPlacement, room.Idx, cellPos, Vector2Int.up, 
-                            Vector2Int.left, out bool valid);
-                        if(valid) candidateExpansions.Add(expansion);
-                    }
-                    if(cellPos.x < _gridSize.x-1 && _grid[PosToIdx(cellPos+Vector2Int.right)] == validPlacement)
-                    {
-                        // Outside is on the right
-                        List<int> expansion = CalculateRectExpansion(validPlacement, room.Idx, cellPos, Vector2Int.up, 
-                            Vector2Int.right, out bool valid);
-                        if(valid) candidateExpansions.Add(expansion);
-                    }
-                }
-                if(cellPos.x == 0 || _grid[PosToIdx(cellPos+Vector2Int.left)] != room.Idx)
-                {
-                    // Wall continues right
-                    if(cellPos.y > 0 && _grid[PosToIdx(cellPos+Vector2Int.down)] == validPlacement)
-                    {
-                        // Outside is down
-                        List<int> expansion = CalculateRectExpansion(validPlacement, room.Idx, cellPos, Vector2Int.right, 
-                            Vector2Int.down, out bool valid);
-                        if(valid) candidateExpansions.Add(expansion);
-                    }
-                    if(cellPos.y < _gridSize.y-1 && _grid[PosToIdx(cellPos+Vector2Int.up)] == validPlacement)
-                    {
-                        // Outside is up
-                        List<int> expansion = CalculateRectExpansion(validPlacement, room.Idx, cellPos, Vector2Int.right, 
-                            Vector2Int.up, out bool valid);
-                        if(valid) candidateExpansions.Add(expansion);
-                    }
-                }
-            }
-
-            // Pick biggest viable expansion
-            List<int> bestExpansions = new List<int>();
-            int biggestArea = -1;
-            for (int i = 0; i < candidateExpansions.Count; i++)
-            {
-                if(candidateExpansions[i].Count == biggestArea)
-                {
-                    bestExpansions.Add(i);
-                }
-                else if(candidateExpansions[i].Count > biggestArea && 
-                    candidateExpansions[i].Count < room.MaxArea-room.CurrentArea)
-                {
-                    bestExpansions.Clear();
-                    bestExpansions.Add(i);
-                    biggestArea = candidateExpansions[i].Count;
-                }
-            }
-
-            if(bestExpansions.Count == 0) return false;
-
-            int bestExpansionIndex = bestExpansions[_prng.Next( bestExpansions.Count-1)];
-            // Claim
-            for (int i = 0; i < candidateExpansions[bestExpansionIndex].Count; i++)
-            {
-                _grid[candidateExpansions[bestExpansionIndex][i]] = room.Idx;
-                room.CurrentArea ++;
-            }
-            return true;
-        }
-
-        private List<int> CalculateRectExpansion(int validPlacement, int roomIdx, Vector2Int origin, 
-            Vector2Int dir, Vector2Int outside, out bool validRect)
-        {
-            validRect = true;
-            List<int> expansionCells = new List<int>();
-
-            while (true)
-            {
-                if(origin.x == _gridSize.x || origin.y == _gridSize.y) break;
-
-                if(_grid[PosToIdx(origin)] != roomIdx)
-                {
-                    break;
-                }
-                if(_grid[PosToIdx(origin+outside)] != validPlacement)
-                {
-                    validRect = false;
-                    break;
-                }
-                expansionCells.Add(PosToIdx(origin+outside));
-                origin += dir;
-            }
-
-            return expansionCells;
-        }
-
-        private bool GrowLShape(int validPlacement, RoomWInfo room)
-        {
-            for (int cellIdx = 0; cellIdx < _grid.Length; cellIdx++)
-            {
-                if(_grid[cellIdx] != room.Idx) continue;
-
-                Vector2Int cellPos = IdxToPos(cellIdx);
-                    
-            }
-            return false;
-        }
-
-        private bool GrowRoom(int validPlacement, RoomWInfo room)
+        private List<List<int>> FindExpansions(int validPlacement, RoomWInfo room)
         {
             List<List<int>> candidateExpansions = new List<List<int>>();
             List<int> outsideCells = new List<int>();
@@ -331,7 +208,6 @@ namespace BuildingGeneration
             }
 
             // Connect outside cells into expansions
-            Debug.Log(outsideCells.Count);
             int repeat = 0;
             while (outsideCells.Count > 0)
             {
@@ -375,8 +251,12 @@ namespace BuildingGeneration
                     break;
                 }
             }
-            Debug.Log(candidateExpansions.Count);
 
+            return candidateExpansions;
+        }
+
+        private bool GrowRect(RoomWInfo room, List<List<int>> candidateExpansions)
+        {
             // Pick biggest viable expansion
             List<int> bestExpansions = new List<int>();
             int biggestArea = -1;
@@ -424,8 +304,10 @@ namespace BuildingGeneration
             return new Vector2Int(x, y);
         }
 
+        private Transform _debugObject;
         public void ShowDebug()
         {
+            _debugObject = new GameObject("view").transform;
             for (int i = 0; i < _grid.Length; i++)
             {
                 if(_grid[i] == -1) continue;
@@ -435,10 +317,17 @@ namespace BuildingGeneration
                 Transform tr = GameObject.CreatePrimitive(PrimitiveType.Quad).transform;
                 tr.position = new Vector3(pos.x,0f,pos.y);
                 tr.rotation = Quaternion.Euler(90f,0f,0f);
+                tr.parent = _debugObject;
                 
                 tr = GameObject.CreatePrimitive(PrimitiveType.Cube).transform;
                 tr.position = new Vector3(pos.x,_grid[i],pos.y);
+                tr.parent = _debugObject;
             }
+        }
+
+        public void DeleteDebug() 
+        {
+            Object.Destroy(_debugObject.gameObject);
         }
 
         private class RoomWInfo : Room
@@ -446,6 +335,7 @@ namespace BuildingGeneration
             public int Idx;
             public int MaxArea;
             public int CurrentArea;
+
 
             public RoomWInfo(Room baseRoom, int idx) : base(baseRoom.Type, baseRoom.AreaRatio)
             {

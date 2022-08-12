@@ -5,7 +5,7 @@ using UnityEngine;
 namespace BuildingGeneration
 {
     [CreateAssetMenu(fileName = "HousePlan", menuName = "ScriptableObjects/HousePlan")]
-    public class HousePlanSO : ScriptableObject
+    public class BuildingPlanSO : ScriptableObject
     {
         public Vector2Int GridSize;
 
