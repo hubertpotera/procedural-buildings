@@ -37,6 +37,8 @@ namespace BuildingGeneration
             }
 
             // Divide to private and public area
+            int[] gridCopy = new int[_gridSize.x * _gridSize.y];
+            System.Array.Copy(_grid, gridCopy, _grid.Length);
             bool validDivisionFound = false;
             while (!validDivisionFound)
             {
@@ -51,6 +53,7 @@ namespace BuildingGeneration
                     if(_grid[i] == _inside) 
                     {
                         validDivisionFound = false;
+                        System.Array.Copy(gridCopy, _grid, _grid.Length);
                         break;
                     }
                 }
