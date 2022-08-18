@@ -7,6 +7,8 @@ namespace BuildingGeneration
     public class BuildingGenerator : MonoBehaviour
     {
         public int Seed;
+        public bool RandomSeed;
+        [Space]
         public BuildingPlanSO HousePlan;
 
         private Floor _floor;
@@ -18,6 +20,8 @@ namespace BuildingGeneration
         public void Generate()
         {
             if(_floor != null) _floor.DeleteDebug();
+
+            if(RandomSeed) Seed = Random.Range(-10000, 10000);
 
             Vector2Int[] outside = new Vector2Int[15];
             for (int x = 0; x < 5; x++)
