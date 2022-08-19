@@ -77,7 +77,6 @@ namespace BuildingGeneration
 
             for (int roomIdx = 0; roomIdx < rooms.Length; roomIdx++)
             {
-                //TODO: adjecency 
                 float areaPercentage = (float)rooms[roomIdx].AreaRatio / (float)totalAreaRatio;
                 float areaToTake = areaPercentage * availableArea;
                 int wallDist = (int)(0.2f*Mathf.Sqrt(areaToTake));
@@ -409,6 +408,31 @@ namespace BuildingGeneration
                 if(rectExpansions.Count == 0)
                 {
                     room.DidLExpansion = true;
+                    // Throw out expansions that aren't an L shape
+                    int minX = int.MaxValue; int maxX = int.MinValue;
+                    int minY = int.MaxValue; int maxY = int.MinValue;
+                    for (int i = 0; i < _grid.Length; i++)
+                    {
+                        if(_grid[i] != room.Idx) continue;
+                        Vector2Int pos = IdxToPos(i);
+                        if(pos.x < minX) minX = pos.x;
+                        if(pos.x > maxX) maxX = pos.x;
+                        if(pos.y < minY) minY = pos.y;
+                        if(pos.y > maxY) maxY = pos.y;
+                    }
+                    List<List<int>> filtered = new List<List<int>>();
+                    for (int i = 0; i < expansions.Count; i++)
+                    {
+                        Vector2Int pos0 = IdxToPos(expansions[i][0]);
+                        Vector2Int pos1 = IdxToPos(expansions[i][expansions[i].Count-1]);
+                        if(pos0.x == minX || pos0.y == minY || pos1.x == maxX || pos1.y == maxY)
+                        {
+                            filtered.Add(expansions[i]);
+                        }
+                    }
+                    if(filtered.Count == 0) return new List<List<int>>();
+                    expansions = filtered;
+
                     // Decide on the L expansion (pick the biggest)
                     List<int> bestExpansionsIdxs = new List<int>();
                     int biggestArea = -1;
