@@ -12,6 +12,7 @@ namespace BuildingGeneration
         public int PrivateAreaRatio;
         public int PublicAreaRatio;
 
-        public Room[] Rooms;
+        public Room[] PrivateRooms;
+        public Room[] PublicRooms;
     }
 }

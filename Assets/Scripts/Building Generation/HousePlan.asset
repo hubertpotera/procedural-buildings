@@ -15,4 +15,17 @@ MonoBehaviour:
   GridSize: {x: 15, y: 10}
   PrivateAreaRatio: 1
   PublicAreaRatio: 1
-  Rooms: []
+  PrivateRooms:
+  - Type: 3
+    AreaRatio: 1
+    Neighbouring: 010000000100000002000000
+  - Type: 1
+    AreaRatio: 1
+    Neighbouring: 03000000
+  - Type: 1
+    AreaRatio: 1
+    Neighbouring: 03000000
+  - Type: 2
+    AreaRatio: 1
+    Neighbouring: 03000000
+  PublicRooms: []

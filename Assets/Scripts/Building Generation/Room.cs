@@ -8,7 +8,11 @@ namespace BuildingGeneration
     {
         Empty,
         Bedroom,
-        Bathroom
+        Bathroom,
+        Hallway,
+        LivingRoom,
+        DiningRoom,
+        Kitchen
     }
 
     [System.Serializable]
@@ -16,11 +20,14 @@ namespace BuildingGeneration
     {
         public RoomType Type;
         public int AreaRatio;
+        public List<RoomType> Neighbouring;
 
-        public Room(RoomType type, int areaRatio)
+        public Room(RoomType type, int areaRatio, List<RoomType> neighbouring)
         {
             Type = type;
             AreaRatio = areaRatio;
+            Neighbouring = neighbouring;
+            if(AreaRatio <= 0) AreaRatio = 1; 
         }
     }
 }
