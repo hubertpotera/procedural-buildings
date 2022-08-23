@@ -152,7 +152,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d4cfc9cad48387f47bc341ed8bd16531, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Seed: -9885
+  Seed: -4254
   RandomSeed: 0
   HousePlan: {fileID: 11400000, guid: 3b597213ad50ce74a9885f8b535380a4, type: 2}
 --- !u!4 &641831398

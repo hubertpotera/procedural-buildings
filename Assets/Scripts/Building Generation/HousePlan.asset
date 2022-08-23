@@ -20,12 +20,21 @@ MonoBehaviour:
     AreaRatio: 1
     Neighbouring: 010000000100000002000000
   - Type: 1
-    AreaRatio: 1
+    AreaRatio: 8
     Neighbouring: 03000000
   - Type: 1
-    AreaRatio: 1
+    AreaRatio: 8
     Neighbouring: 03000000
   - Type: 2
-    AreaRatio: 1
+    AreaRatio: 3
     Neighbouring: 03000000
-  PublicRooms: []
+  PublicRooms:
+  - Type: 4
+    AreaRatio: 1
+    Neighbouring: 0500000006000000
+  - Type: 5
+    AreaRatio: 1
+    Neighbouring: 0400000006000000
+  - Type: 6
+    AreaRatio: 1
+    Neighbouring: 0400000005000000
