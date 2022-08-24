@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: HousePlan
   m_EditorClassIdentifier: 
   GridSize: {x: 15, y: 10}
-  PrivateAreaRatio: 1
-  PublicAreaRatio: 1
+  PrivateAreaRatio: 4
+  PublicAreaRatio: 6
   PrivateRooms:
   - Type: 3
     AreaRatio: 1
