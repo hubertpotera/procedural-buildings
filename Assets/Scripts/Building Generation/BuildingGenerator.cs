@@ -37,7 +37,7 @@ namespace BuildingGeneration
             _floor = new Floor(Seed, HousePlan, outside);
             Debug.Log("Generation ended. Took " + (Time.realtimeSinceStartup-startTime));
             
-            _floor.ShowDebug();
+            gameObject.GetComponent<FloorDisplayer>().Display(_floor);
         }
     }
 }

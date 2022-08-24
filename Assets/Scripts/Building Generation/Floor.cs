@@ -7,64 +7,71 @@ namespace BuildingGeneration
 {
     public class Floor
     {
-        private const int _outside = -1;
-        private const int _inside = 0;  // or anything greater
-        private const int _public = 1;
-        private const int _private = 2;
+        public const int OutsideIdx = -1;
+        public const int InsideIdx = 0;  // or anything greater
+        public const int PublicIdx = 1;
+        public const int PrivateIdx = 2;
 
-        private int[] _grid;
-        private Vector2Int _gridSize;
+        public readonly Vector2Int GridSize;
+        public readonly int[] FloorGrid;
+        public readonly RoomWInfo[] PrivateRooms;
+        public readonly RoomWInfo[] PublicRooms;
+
         private System.Random _prng;
-        private RoomWInfo[] _privateRooms;
-        private RoomWInfo[] _publicRooms;
 
         public Floor(int seed, BuildingPlanSO plan, Vector2Int[] outsideCells)
         {
-            _gridSize = plan.GridSize;
-            _grid = new int[_gridSize.x * _gridSize.y];
+            GridSize = plan.GridSize;
+            FloorGrid = new int[GridSize.x * GridSize.y];
             _prng = new System.Random(seed);
-            _privateRooms = new RoomWInfo[plan.PrivateRooms.Length];
-            _publicRooms = new RoomWInfo[plan.PublicRooms.Length];
+            PrivateRooms = new RoomWInfo[plan.PrivateRooms.Length];
+            PublicRooms = new RoomWInfo[plan.PublicRooms.Length];
 
-            for (int i = 0; i < _privateRooms.Length; i++)
+            for (int i = 0; i < PrivateRooms.Length; i++)
             {
-                _privateRooms[i] = new RoomWInfo(plan.PrivateRooms[i], 3+i); // 0,1,2 are reserved
+                PrivateRooms[i] = new RoomWInfo(plan.PrivateRooms[i], 3+i); // 0,1,2 are reserved
             }
-            for (int i = 0; i < _publicRooms.Length; i++)
+            for (int i = 0; i < PublicRooms.Length; i++)
             {
-                _publicRooms[i] = new RoomWInfo(plan.PublicRooms[i], 3+_privateRooms.Length+i);
+                PublicRooms[i] = new RoomWInfo(plan.PublicRooms[i], 3+PrivateRooms.Length+i);
             }
 
             // Set outside cells
             int outsideArea = 0;
             for (int i = 0; i < outsideCells.Length; i++)
             {
-                _grid[PosToIdx(outsideCells[i])] = _outside;
+                FloorGrid[PosToIdx(outsideCells[i])] = OutsideIdx;
                 outsideArea ++;
             }
 
             // Divide to private and public area
-            int[] gridCopy = new int[_gridSize.x * _gridSize.y];
-            System.Array.Copy(_grid, gridCopy, _grid.Length);
+            int[] gridCopy = new int[GridSize.x * GridSize.y];
+            System.Array.Copy(FloorGrid, gridCopy, FloorGrid.Length);
             bool validDivisionFound = false;
             int repeats = 0;
             while (!validDivisionFound)
             {
                 repeats ++;
-                RoomWInfo privateArea = new RoomWInfo(new Room(RoomType.Empty, plan.PrivateAreaRatio, new List<RoomType>()), _private);
-                RoomWInfo publicArea = new RoomWInfo(new Room(RoomType.Empty, plan.PublicAreaRatio, new List<RoomType>()), _public);
-                Vector2Int[] areaSeeds = FindRoomSeeds(_inside, new RoomWInfo[]{privateArea, publicArea});
-                ExpandRooms(_inside, new RoomWInfo[]{privateArea, publicArea}, areaSeeds);
+                RoomWInfo privateArea = new RoomWInfo(new Room(RoomType.Empty, plan.PrivateAreaRatio, new List<RoomType>()), PrivateIdx);
+                RoomWInfo publicArea = new RoomWInfo(new Room(RoomType.Empty, plan.PublicAreaRatio, new List<RoomType>()), PublicIdx);
+                RoomWInfo[] areas = new RoomWInfo[]{privateArea, publicArea};
+                Vector2Int[] areaSeeds = FindRoomSeeds(InsideIdx, areas);
+                ExpandRooms(InsideIdx, areas, areaSeeds);
                 // Check if the whole grid was filled
-                validDivisionFound = true;
-                for (int i = 0; i < _grid.Length; i++)
+                // validDivisionFound = true;
+                // for (int i = 0; i < _grid.Length; i++)
+                // {
+                //     if(_grid[i] == _inside) 
+                //     {
+                //         validDivisionFound = false;
+                //         System.Array.Copy(gridCopy, _grid, _grid.Length);
+                //         break;
+                //     }
+                // }
+                validDivisionFound = CheckValidity(areas, InsideIdx);
+                if(!validDivisionFound)
                 {
-                    if(_grid[i] == _inside) 
-                    {
-                        validDivisionFound = false;
-                        System.Array.Copy(gridCopy, _grid, _grid.Length);
-                        break;
-                    }
+                    System.Array.Copy(gridCopy, FloorGrid, FloorGrid.Length);
                 }
                 if(repeats > 100) 
                 {
@@ -74,21 +81,21 @@ namespace BuildingGeneration
             }
             // Fill with rooms
             // First, private area
-            System.Array.Copy(_grid, gridCopy, _grid.Length);
+            System.Array.Copy(FloorGrid, gridCopy, FloorGrid.Length);
             validDivisionFound = false;
             repeats = 0;
             while (!validDivisionFound)
             {
                 repeats ++;
-                Vector2Int[] privateSeeds = FindRoomSeeds(_private, _privateRooms);
-                ExpandRooms(_private, _privateRooms, privateSeeds);
-                validDivisionFound = CheckValidity(_privateRooms);
+                Vector2Int[] privateSeeds = FindRoomSeeds(PrivateIdx, PrivateRooms);
+                ExpandRooms(PrivateIdx, PrivateRooms, privateSeeds);
+                validDivisionFound = CheckValidity(PrivateRooms, PrivateIdx);
                 if(!validDivisionFound)
                 {
-                    System.Array.Copy(gridCopy, _grid, _grid.Length);
-                    for (int i = 0; i < _privateRooms.Length; i++)
+                    System.Array.Copy(gridCopy, FloorGrid, FloorGrid.Length);
+                    for (int i = 0; i < PrivateRooms.Length; i++)
                     {
-                        _privateRooms[i].DidLExpansion = false;
+                        PrivateRooms[i].DidLExpansion = false;
                     }
                 }
                 if(repeats > 100) 
@@ -98,21 +105,21 @@ namespace BuildingGeneration
                 }
             }
             // Second, public area
-            System.Array.Copy(_grid, gridCopy, _grid.Length);
+            System.Array.Copy(FloorGrid, gridCopy, FloorGrid.Length);
             validDivisionFound = false;
             repeats = 0;
             while (!validDivisionFound)
             {
                 repeats ++;
-                Vector2Int[] publicSeeds = FindRoomSeeds(_public, _publicRooms);
-                ExpandRooms(_public, _publicRooms, publicSeeds);
-                validDivisionFound = CheckValidity(_publicRooms);
+                Vector2Int[] publicSeeds = FindRoomSeeds(PublicIdx, PublicRooms);
+                ExpandRooms(PublicIdx, PublicRooms, publicSeeds);
+                validDivisionFound = CheckValidity(PublicRooms, PublicIdx);
                 if(!validDivisionFound)
                 {
-                    System.Array.Copy(gridCopy, _grid, _grid.Length);
-                    for (int i = 0; i < _publicRooms.Length; i++)
+                    System.Array.Copy(gridCopy, FloorGrid, FloorGrid.Length);
+                    for (int i = 0; i < PublicRooms.Length; i++)
                     {
-                        _publicRooms[i].DidLExpansion = false;
+                        PublicRooms[i].DidLExpansion = false;
                     }
                 }
                 if(repeats > 100) 
@@ -129,9 +136,9 @@ namespace BuildingGeneration
             Vector2Int[] roomSeeds = new Vector2Int[rooms.Length];
 
             int availableArea = 0;
-            for (int i = 0; i < _grid.Length; i++)
+            for (int i = 0; i < FloorGrid.Length; i++)
             {
-                if(_grid[i] == validPlacement) availableArea ++;
+                if(FloorGrid[i] == validPlacement) availableArea ++;
             }
             int totalAreaRatio = 0;
             for (int i = 0; i < rooms.Length; i++)
@@ -145,13 +152,13 @@ namespace BuildingGeneration
                 float areaToTake = areaPercentage * availableArea;
                 int wallDist = (int)(0.2f*Mathf.Sqrt(areaToTake));
 
-                int[] gridWeight = new int[_grid.Length];
+                int[] gridWeight = new int[FloorGrid.Length];
                 int totalWeights = 0;
 
                 // Fill grid with weights
                 for (int cellIdx = 0; cellIdx < gridWeight.Length; cellIdx++)
                 {
-                    if(_grid[cellIdx] != validPlacement) continue;
+                    if(FloorGrid[cellIdx] != validPlacement) continue;
                     bool valid = true;
                     for (int y = -wallDist; y <= wallDist; y++)
                     {
@@ -160,12 +167,12 @@ namespace BuildingGeneration
                             if(!valid) continue;
                             Vector2Int offset = new Vector2Int(x,y);
                             Vector2Int cellCheck = offset + IdxToPos(cellIdx);
-                            if(cellCheck.x < 0 || cellCheck.y < 0 || cellCheck.x >= _gridSize.x || cellCheck.y >= _gridSize.y) 
+                            if(cellCheck.x < 0 || cellCheck.y < 0 || cellCheck.x >= GridSize.x || cellCheck.y >= GridSize.y) 
                             {
                                 valid = false;
                                 continue;
                             }
-                            if(_grid[PosToIdx(cellCheck)] != validPlacement)
+                            if(FloorGrid[PosToIdx(cellCheck)] != validPlacement)
                             {
                                 valid = false;
                             }
@@ -186,8 +193,8 @@ namespace BuildingGeneration
                             {
                                 Vector2Int offset = new Vector2Int(x,y);
                                 Vector2Int cell = roomSeeds[i] + offset;
-                                if(cell.x < 0 || cell.x >= _gridSize.x || cell.y < 0 || cell.y >= _gridSize.y) continue;
-                                if(_grid[PosToIdx(cell)] != validPlacement) continue;
+                                if(cell.x < 0 || cell.x >= GridSize.x || cell.y < 0 || cell.y >= GridSize.y) continue;
+                                if(FloorGrid[PosToIdx(cell)] != validPlacement) continue;
                                 int weight = (Mathf.Max(Mathf.Abs(x), Mathf.Abs(y))-1) * 7;
                                 totalWeights += weight - gridWeight[PosToIdx(cell)];
                                 gridWeight[PosToIdx(cell)] = weight;
@@ -203,7 +210,7 @@ namespace BuildingGeneration
                             {
                                 Vector2Int offset = new Vector2Int(x,y);
                                 Vector2Int cell = roomSeeds[i] + offset;
-                                if(cell.x < 0 || cell.x >= _gridSize.x || cell.y < 0 || cell.y >= _gridSize.y) continue;
+                                if(cell.x < 0 || cell.x >= GridSize.x || cell.y < 0 || cell.y >= GridSize.y) continue;
                                 totalWeights -= gridWeight[PosToIdx(cell)];
                                 gridWeight[PosToIdx(cell)] = 0;
                             }
@@ -216,7 +223,7 @@ namespace BuildingGeneration
                 {
                     for (int cellIdx = 0; cellIdx < gridWeight.Length; cellIdx++)
                     {
-                        if(_grid[cellIdx] != validPlacement) continue;
+                        if(FloorGrid[cellIdx] != validPlacement) continue;
                         bool valid = false;
                         for (int y = -1; y <= 1; y++)
                         {
@@ -225,11 +232,11 @@ namespace BuildingGeneration
                                 if(valid) continue;
                                 Vector2Int offset = new Vector2Int(x,y);
                                 Vector2Int cellCheck = offset + IdxToPos(cellIdx);
-                                if(cellCheck.x < 0 || cellCheck.y < 0 || cellCheck.x >= _gridSize.x || cellCheck.y >= _gridSize.y) 
+                                if(cellCheck.x < 0 || cellCheck.y < 0 || cellCheck.x >= GridSize.x || cellCheck.y >= GridSize.y) 
                                 {
                                     continue;
                                 }
-                                if(_grid[PosToIdx(cellCheck)] == _public)
+                                if(FloorGrid[PosToIdx(cellCheck)] == PublicIdx)
                                 {
                                     valid = true;
                                 }
@@ -270,9 +277,9 @@ namespace BuildingGeneration
         {
             int availableArea = 0;
             int totalAreaRatio = 0;
-            for (int i = 0; i < _grid.Length; i++)
+            for (int i = 0; i < FloorGrid.Length; i++)
             {
-                if(_grid[i] == validPlacement) availableArea ++;
+                if(FloorGrid[i] == validPlacement) availableArea ++;
             }
             for (int i = 0; i < rooms.Length; i++)
             {
@@ -284,7 +291,7 @@ namespace BuildingGeneration
                 rooms[i].MaxArea = (int)(0.5f*availableArea * rooms[i].AreaRatio/totalAreaRatio);
                 rooms[i].CurrentArea = 1;
                 // Claim first cells
-                _grid[PosToIdx(roomSeeds[i])] = rooms[i].Idx;
+                FloorGrid[PosToIdx(roomSeeds[i])] = rooms[i].Idx;
             }
 
             List<RoomWInfo> roomsToExpand = new List<RoomWInfo>();
@@ -355,15 +362,15 @@ namespace BuildingGeneration
             Vector2Int[] dirs = new Vector2Int[] {Vector2Int.down, Vector2Int.left, Vector2Int.right, Vector2Int.up};
 
             // Find outside cells
-            for (int cellIdx = 0; cellIdx < _grid.Length; cellIdx++)
+            for (int cellIdx = 0; cellIdx < FloorGrid.Length; cellIdx++)
             {
-                if(_grid[cellIdx] != room.Idx) continue;
+                if(FloorGrid[cellIdx] != room.Idx) continue;
                 Vector2Int cellPos = IdxToPos(cellIdx);
                 for (int i = 0; i < dirs.Length; i++)
                 {
                     Vector2Int checking = cellPos + dirs[i];
-                    if(checking.x < 0 || checking.y < 0 || checking.x >= _gridSize.x || checking.y >= _gridSize.y) continue;
-                    if(_grid[PosToIdx(checking)] == validPlacement) outsideCells.Add(PosToIdx(checking));
+                    if(checking.x < 0 || checking.y < 0 || checking.x >= GridSize.x || checking.y >= GridSize.y) continue;
+                    if(FloorGrid[PosToIdx(checking)] == validPlacement) outsideCells.Add(PosToIdx(checking));
                 }
             }
 
@@ -378,9 +385,9 @@ namespace BuildingGeneration
                 {
                     dif = 1;
                 }
-                else if(outsideCells.Contains(currentCell + _gridSize.x))
+                else if(outsideCells.Contains(currentCell + GridSize.x))
                 {
-                    dif = _gridSize.x;
+                    dif = GridSize.x;
                 }
                 else 
                 {
@@ -388,7 +395,7 @@ namespace BuildingGeneration
                     outsideCells.Remove(currentCell);
                 }
 
-                while (currentCell<_grid.Length && outsideCells.Contains(currentCell))
+                while (currentCell<FloorGrid.Length && outsideCells.Contains(currentCell))
                 {
                     expansion.Add(currentCell);
                     outsideCells.Remove(currentCell);
@@ -444,7 +451,7 @@ namespace BuildingGeneration
             // Claim
             for (int i = 0; i < candidateExpansions[bestExpansionIndex].Count; i++)
             {
-                _grid[candidateExpansions[bestExpansionIndex][i]] = room.Idx;
+                FloorGrid[candidateExpansions[bestExpansionIndex][i]] = room.Idx;
                 room.CurrentArea ++;
             }
             return true;
@@ -456,9 +463,9 @@ namespace BuildingGeneration
 
             int minX = int.MaxValue; int maxX = int.MinValue;
             int minY = int.MaxValue; int maxY = int.MinValue;
-            for (int i = 0; i < _grid.Length; i++)
+            for (int i = 0; i < FloorGrid.Length; i++)
             {
-                if(_grid[i] != roomIdx) continue;
+                if(FloorGrid[i] != roomIdx) continue;
                 Vector2Int pos = IdxToPos(i);
                 if(pos.x < minX) minX = pos.x;
                 if(pos.x > maxX) maxX = pos.x;
@@ -529,7 +536,7 @@ namespace BuildingGeneration
             // Claim
             for (int i = 0; i < candidateExpansions[bestExpansionIndex].Count; i++)
             {
-                _grid[candidateExpansions[bestExpansionIndex][i]] = room.Idx;
+                FloorGrid[candidateExpansions[bestExpansionIndex][i]] = room.Idx;
                 room.CurrentArea ++;
             }
             return true;
@@ -546,9 +553,9 @@ namespace BuildingGeneration
                     // Throw out expansions that aren't an L shape
                     int minX = int.MaxValue; int maxX = int.MinValue;
                     int minY = int.MaxValue; int maxY = int.MinValue;
-                    for (int i = 0; i < _grid.Length; i++)
+                    for (int i = 0; i < FloorGrid.Length; i++)
                     {
-                        if(_grid[i] != room.Idx) continue;
+                        if(FloorGrid[i] != room.Idx) continue;
                         Vector2Int pos = IdxToPos(i);
                         if(pos.x < minX) minX = pos.x;
                         if(pos.x > maxX) maxX = pos.x;
@@ -588,14 +595,14 @@ namespace BuildingGeneration
                     List<int> chosenExpansion = expansions[bestExpansionIndex];
 
                     // Figure out the directions of the expansion
-                    int[] dirs = new int[] {-1, 1, -_gridSize.x, _gridSize.x};
+                    int[] dirs = new int[] {-1, 1, -GridSize.x, GridSize.x};
                     if(chosenExpansion.Count == 1)
                     {
                         for (int i = 0; i < dirs.Length; i++)
                         {
                             int check = chosenExpansion[0] + dirs[i];
-                            if(check >= _grid.Length || check < 0) continue;
-                            if(_grid[check] == room.Idx)
+                            if(check >= FloorGrid.Length || check < 0) continue;
+                            if(FloorGrid[check] == room.Idx)
                             {
                                 room.LExpansionDif = -dirs[i];
                             }
@@ -606,21 +613,21 @@ namespace BuildingGeneration
                         if(chosenExpansion[1] - chosenExpansion[0] == 1)
                         {
                             // horizontal wall
-                            if(chosenExpansion[0] + _gridSize.x < _grid.Length && 
-                                _grid[chosenExpansion[0] + _gridSize.x] == room.Idx)
+                            if(chosenExpansion[0] + GridSize.x < FloorGrid.Length && 
+                                FloorGrid[chosenExpansion[0] + GridSize.x] == room.Idx)
                             {
-                                room.LExpansionDif = -_gridSize.x;
+                                room.LExpansionDif = -GridSize.x;
                             }
                             else 
                             {
-                                room.LExpansionDif = _gridSize.x;
+                                room.LExpansionDif = GridSize.x;
                             }
                         }
                         else
                         {
                             // vertical wall
-                            if(chosenExpansion[0] + 1 < _grid.Length && 
-                                _grid[chosenExpansion[0] + 1] == room.Idx)
+                            if(chosenExpansion[0] + 1 < FloorGrid.Length && 
+                                FloorGrid[chosenExpansion[0] + 1] == room.Idx)
                             {
                                 room.LExpansionDif = -1;
                             }
@@ -644,7 +651,7 @@ namespace BuildingGeneration
             {
                 // If last expansion was on the edge, the next one is not viable as it will wrap around
                 Vector2Int pos1 = IdxToPos(room.LastLExpansion[0]);
-                if(pos1.x == 0 || pos1.x == _gridSize.x-1 || pos1.y == 0 || pos1.y == _gridSize.y-1) 
+                if(pos1.x == 0 || pos1.x == GridSize.x-1 || pos1.y == 0 || pos1.y == GridSize.y-1) 
                 {
                     return new List<List<int>>();
                 }
@@ -659,7 +666,7 @@ namespace BuildingGeneration
                 bool valid = true;
                 for (int i = 0; i < newExpansion.Count; i++)
                 {
-                    if(_grid[newExpansion[i]] != validPlacement) 
+                    if(FloorGrid[newExpansion[i]] != validPlacement) 
                     {
                         valid = false;
                         break;
@@ -675,8 +682,14 @@ namespace BuildingGeneration
             }
         }
 
-        private bool CheckValidity(RoomWInfo[] rooms)
+        private bool CheckValidity(RoomWInfo[] rooms, int theirValidPlacement)
         {
+            // Check if all cells were filled
+            for (int i = 0; i < FloorGrid.Length; i++)
+            {
+                if(FloorGrid[i] == theirValidPlacement) return false;
+            }
+
             List<KeyValuePair<RoomType,int>> typeIndeces = new List<KeyValuePair<RoomType, int>>();
             for (int i = 0; i < rooms.Length; i++)
             {
@@ -700,15 +713,15 @@ namespace BuildingGeneration
 
                 // Check if neighbouring all required neighbours
                 Vector2Int[] dirs = new Vector2Int[] {Vector2Int.down, Vector2Int.left, Vector2Int.right, Vector2Int.up};
-                for (int cellIdx = 0; cellIdx < _grid.Length; cellIdx++)
+                for (int cellIdx = 0; cellIdx < FloorGrid.Length; cellIdx++)
                 {
-                    if(_grid[cellIdx] != rooms[roomIdx].Idx) continue;
+                    if(FloorGrid[cellIdx] != rooms[roomIdx].Idx) continue;
                     Vector2Int cellPos = IdxToPos(cellIdx);
                     for (int i = 0; i < dirs.Length; i++)
                     {
                         Vector2Int checking = cellPos + dirs[i];
-                        if(checking.x < 0 || checking.y < 0 || checking.x >= _gridSize.x || checking.y >= _gridSize.y) continue;
-                        int val = _grid[PosToIdx(checking)];
+                        if(checking.x < 0 || checking.y < 0 || checking.x >= GridSize.x || checking.y >= GridSize.y) continue;
+                        int val = FloorGrid[PosToIdx(checking)];
                         if(requiredNeighbours.Contains(val)) requiredNeighbours.Remove(val);
                     }
                     if(requiredNeighbours.Count == 0) break;
@@ -720,13 +733,13 @@ namespace BuildingGeneration
 
         private int PosToIdx(Vector2Int pos)
         {
-            return pos.y*_gridSize.x + pos.x;
+            return pos.y*GridSize.x + pos.x;
         }
 
         private Vector2Int IdxToPos(int idx)
         {
-            int y = idx / _gridSize.x;
-            int x = idx - y*_gridSize.x;
+            int y = idx / GridSize.x;
+            int x = idx - y*GridSize.x;
             return new Vector2Int(x, y);
         }
 
@@ -734,9 +747,9 @@ namespace BuildingGeneration
         public void ShowDebug()
         {
             _debugObject = new GameObject("view").transform;
-            for (int i = 0; i < _grid.Length; i++)
+            for (int i = 0; i < FloorGrid.Length; i++)
             {
-                if(_grid[i] == -1) continue;
+                if(FloorGrid[i] == -1) continue;
 
                 Vector2 pos = IdxToPos(i);
 
@@ -746,7 +759,7 @@ namespace BuildingGeneration
                 tr.parent = _debugObject;
                 
                 tr = GameObject.CreatePrimitive(PrimitiveType.Cube).transform;
-                tr.position = new Vector3(pos.x,.25f*_grid[i],pos.y);
+                tr.position = new Vector3(pos.x,.25f*FloorGrid[i],pos.y);
                 tr.parent = _debugObject;
             }
         }
@@ -756,7 +769,7 @@ namespace BuildingGeneration
             Object.Destroy(_debugObject.gameObject);
         }
 
-        private class RoomWInfo : Room
+        public class RoomWInfo : Room
         {
             public int Idx;
             public int MaxArea;
